@@ -63,7 +63,7 @@ if __name__=="__main__":
 
         model = build_model(len(train_env.reset()[-1]), train_env.action_space_n, n_count, n_layers, n_windows, window)
         #model.summary()
-        dqn = build_agent(model, train_env.action_space_n, n_windows, window, policy=BoltzmannQPolicy)
+        dqn = build_agent(model, train_env.action_space_n, n_windows, window, policy=policy)
         dqn.compile(keras.optimizers.RMSprop(learning_rate=1e-5), metrics=[tf.keras.metrics.RootMeanSquaredError()])
 
         ## Callbacks:

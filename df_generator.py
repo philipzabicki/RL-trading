@@ -12,31 +12,33 @@ import ta
 
 from get_data import get_data
 
+def check_df(seconds, dir, itv, tckr, futures):
+  try:
+    tckr_df = pd.read_csv(os.getcwd()+dir+itv+'_data/'+tckr+'/'+tckr+'.csv')
+    #tckr_df['Opened'] = pd.to_datetime(tckr_df['Opened'])
+    timestamp_last = pd.to_datetime(tckr_df.iloc[-1]['Opened']).value // 10 ** 9
+    diff=time.time()-timestamp_last
+    print(f' avg gain/loss data is of by {diff} timestamps')
+    # checking how many seconds old the local df is
+    if diff>seconds:
+      raise FileNotFoundError("Out of date dataframe (1day)")
+    return tckr_df
+  except FileNotFoundError:
+    return get_data(ticker=tckr, interval=itv, futures=futures)
+
 def get_levels(ticker='BTCUSDT', interval='1m',  futures=True, decimals=0, current_price_offset=15,volume_above_avg=False):
   ### get data ###
   if futures:
     directory='/data/binance_data_futures/'
   else:
     directory='/data/binance_data_spot/'
-    
-  try:
-    tckr_df = pd.read_csv(os.getcwd()+directory+interval+'_data/'+ticker+'/'+ticker+'.csv')
-    #tckr_df['Opened'] = pd.to_datetime(tckr_df['Opened'])
-    timestamp_last = pd.to_datetime(tckr_df.iloc[-1]['Opened']).value // 10 ** 9
-    diff=time.time()-timestamp_last
-    print(str(diff))
-    if diff>86400:
-      raise FileNotFoundError("Out of date dataframe (1day)")
-  except FileNotFoundError:
-    tckr_df = get_data(ticker=ticker, interval=interval, futures=futures)
-
-  #live_price=tckr_df.iloc[-1]['Close']
-  #print(live_price)
-  avg_vol=tckr_df['Volume'].mean()
+  tckr_df = check_df(86400, directory, interval, ticker, futures)
 
   ### searchin for lvls ###
+  vol_array=tckr_df['Volume'][1:].to_numpy()
+  avg_vol=np.mean(vol_array)
   tckr_lvls={}
-  for open, close, volume, close_next in zip(tckr_df['Open'][:-1].to_numpy(), tckr_df['Close'][:-1].to_numpy(), tckr_df['Volume'][1:].to_numpy(), tckr_df['Close'][1:].to_numpy()):
+  for open, close, volume, close_next in zip(tckr_df['Open'][:-1].to_numpy(), tckr_df['Close'][:-1].to_numpy(), vol_array, tckr_df['Close'][1:].to_numpy()):
     #if (not volume_above_avg or volume>=avg_vol) and band_top>close>band_bottom:
     if (close>open>close_next) or (close<open<close_next):
       close=round(close, decimals)
@@ -53,14 +55,12 @@ def get_levels(ticker='BTCUSDT', interval='1m',  futures=True, decimals=0, curre
 
 
 def get_avg_changes(ticker='BTCUSDT', interval='1m', futures=True):
+  ### get data ###
   if futures:
-    directory='/binance_data_futures/'
+    directory='/data/binance_data_futures/'
   else:
-    directory='/binance_data_spot/'
-  try:
-    tckr_df = pd.read_csv(os.getcwd()+'/data'+directory+interval+'_data/'+ticker+'/'+ticker+'.csv')
-  except:
-    tckr_df = get_data(ticker=ticker, interval=interval, futures=futures)
+    directory='/data/binance_data_spot/'
+  tckr_df = check_df(86400, directory, interval, ticker, futures)
 
   open_array=tckr_df['Open'].to_numpy()
   close_array=tckr_df['Close'].to_numpy()
@@ -352,6 +352,7 @@ def get_df(interval_list, month_list):
   dfs=[]
   for mth in month_list:
     for itv in interval_list:
+      # check if data for given interval and month exists inside data folder
       path=os.getcwd()+'\data\get_df'
       file_name='BTCUSDT-'+itv+'-2022-'+mth+'.zip'
       full_path=path+'\\'+file_name
@@ -359,12 +360,13 @@ def get_df(interval_list, month_list):
         pass
       else:
         os.makedirs(path)
-        print(f' donwloading {full_path}')
+        print(f' donwloading {file_name}')
         link ='https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/'+itv+'/'+file_name
         wget.download(link, full_path)
         with zipfile.ZipFile(full_path, 'r') as zip_ref:
             zip_ref.extractall(path)
-      print(f' {mth}', end=' ')
+
+      print(f' month {mth}', end=' ')
       if itv=='1m':
         df=pd.read_csv(full_path)
         df.columns = ['Open time',	'Open',	'High',	'Low',	'Close',	'Volume',	'Close time',	'Quote asset volume',	'Number of trades',	'Taker buy base asset volume',	'Taker buy quote asset volume',	'Ignore']

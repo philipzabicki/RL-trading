@@ -3,6 +3,7 @@ import numpy as np
 from collections import deque
 import random
 from statistics import mean, stdev
+import time
 
 from visualize import TradingGraph
 
@@ -73,21 +74,24 @@ class CustomEnv:
         for i in reversed(range(self.lookback_window_size)):
             current_step = self.current_step - i
             self.orders_history.append([self.position_size, self.balance, self.in_position, self.qty, self.cumulative_pnl, self.pnl, self.enter_price])
-            self.market_history.append([self.df.loc[self.current_step, col_name] for col_name in self.df.columns if col_name!='Open time'])
+            self.market_history.append([self.df.loc[self.current_step, col_name] for col_name in self.df.columns if col_name not in ['Open time', 'Open', 'High', 'Low', 'Close']])
             #print(i, end=': ')
             #print()
             #print(self.orders_history[-1])
             #print(self.market_history[-1])
 
         state = np.concatenate((self.market_history, self.orders_history), axis=1)
-        print(state)
+        #print(state)
         return state
 
     # Get the data points for the given current_step
     def _next_observation(self):
-        self.market_history.append([self.df.loc[self.current_step, col_name] for col_name in self.df.columns if col_name!='Open time'])
-        obs = np.concatenate((self.market_history, self.orders_history), axis=1)
-        return obs
+      exclude_list=['Open time', 'Open', 'High', 'Low', 'Close', 'Open5m', 'High5m', 'Low5m', 'Close5m', 'Open15m', 'High15m', 'Low15m', 'Close15m', 'Open1h', 'High1h', 'Low1h', 'Close1h']
+      self.market_history.append([self.df.loc[self.current_step, col_name] for col_name in self.df.columns if col_name not in exclude_list])
+      obs = np.concatenate((self.market_history, self.orders_history), axis=1)
+      print(obs)
+      time.sleep(120)
+      return obs
     
     def _calculate_reward(self):
       ###### Profit closing ######

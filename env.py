@@ -80,6 +80,7 @@ class CustomEnv:
             #print(self.market_history[-1])
 
         state = np.concatenate((self.market_history, self.orders_history), axis=1)
+        print(state)
         return state
 
     # Get the data points for the given current_step

@@ -13,13 +13,22 @@ def get_data(ticker='BTCUSDT', interval='1h', futures=True, decimals=0, progress
 
   ### If inside colab notebook ###
   if 'google.colab' in sys.modules:
+    #!rm -rf /content/data
     drive_path='/content/drive/MyDrive/RLtrader'+directory+interval+'_data/'+ticker
     if not os.path.exists(drive_path):
         os.makedirs(drive_path)
         print(f'created dir {drive_path}')
+    else:
+      #!rm -rf /content/dump
+      os.makedirs('/content/dump')
+      drive_dump=drive_path+'/old_concatenated_csvs'
+      try:
+        shutil.move(drive_dump, '/content/dump')
+        #!rm -rf /content/dump
+      except FileNotFoundError:
+        None
 
-    # move already downloaded data from google drive to working dir
-    local_dir = '/content'+directory+interval+'_data/'
+    local_dir = '/content'+directory+interval+'_data/'+ticker
     shutil.move(drive_path, local_dir)
 
     # refill with newer data 
